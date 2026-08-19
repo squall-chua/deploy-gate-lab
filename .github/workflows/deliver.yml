@@ -1,0 +1,52 @@
+name: deliver
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to deploy. Blank means this commit. This is how rollback works."
+        required: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+    steps:
+      - name: Decide what we are shipping
+        id: pick
+        run: |
+          version="${{ inputs.version }}"
+          if [ -z "$version" ]; then version="${{ github.sha }}"; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "shipping $version"
+
+  staging:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.example.invalid
+    steps:
+      - name: Deploy
+        run: |
+          echo "version ${{ needs.build.outputs.version }}"
+          echo "target  ${{ vars.DEPLOY_TARGET }}"
+
+  production:
+    needs: staging          # ordering: production cannot start before staging
+    runs-on: ubuntu-latest
+    environment:
+      name: production      # this is what makes the job wait for a human
+      url: https://prod.example.invalid
+    steps:
+      - name: Deploy
+        run: |
+          echo "version ${{ needs.build.outputs.version }}"
+          echo "target  ${{ vars.DEPLOY_TARGET }}"
