@@ -40,7 +40,7 @@ jobs:
           echo "target  ${{ vars.DEPLOY_TARGET }}"
 
   production:
-    needs: staging          # ordering: production cannot start before staging
+    needs: [build, staging]  # staging orders it; build is where the version comes from
     runs-on: ubuntu-latest
     environment:
       name: production      # this is what makes the job wait for a human
